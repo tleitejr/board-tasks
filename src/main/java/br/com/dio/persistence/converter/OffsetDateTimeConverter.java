@@ -17,7 +17,7 @@ public final class OffsetDateTimeConverter {
     }
 
     public static Timestamp toTimestamp(final OffsetDateTime value){
-        return nonNull(value) ? Timestamp.valueOf(value.atZoneSameInstant(UTC).toLocalDateTime()) : null;
+        return nonNull(value) ? Timestamp.from(value.toInstant()) : null;
     }
 
 }

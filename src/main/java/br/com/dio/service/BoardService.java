@@ -1,5 +1,6 @@
 package br.com.dio.service;
 
+import br.com.dio.domain.BoardRules;
 import br.com.dio.persistence.dao.BoardColumnDAO;
 import br.com.dio.persistence.dao.BoardDAO;
 import br.com.dio.persistence.entity.BoardEntity;
@@ -14,6 +15,7 @@ public class BoardService {
     private final Connection connection;
 
     public BoardEntity insert(final BoardEntity entity) throws SQLException {
+        BoardRules.validate(entity.getName(), entity.getBoardColumns());
         var dao = new BoardDAO(connection);
         var boardColumnDAO = new BoardColumnDAO(connection);
         try{

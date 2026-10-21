@@ -1,10 +1,10 @@
 package br.com.dio.persistence.dao;
 
 import br.com.dio.persistence.entity.BoardEntity;
-import com.mysql.cj.jdbc.StatementImpl;
 import lombok.AllArgsConstructor;
 
 import java.sql.Connection;
+import java.sql.Statement;
 import java.sql.SQLException;
 import java.util.Optional;
 
@@ -15,11 +15,13 @@ public class BoardDAO {
 
     public BoardEntity insert(final BoardEntity entity) throws SQLException {
         var sql = "INSERT INTO BOARDS (name) values (?);";
-        try(var statement = connection.prepareStatement(sql)){
+        try(var statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)){
             statement.setString(1, entity.getName());
             statement.executeUpdate();
-            if (statement instanceof StatementImpl impl){
-                entity.setId(impl.getLastInsertID());
+            try (var keys = statement.getGeneratedKeys()) {
+                if (keys.next()) {
+                    entity.setId(keys.getLong(1));
+                }
             }
         }
         return entity;

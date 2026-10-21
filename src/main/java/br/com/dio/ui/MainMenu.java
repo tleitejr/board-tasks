@@ -19,12 +19,20 @@ import static br.com.dio.persistence.entity.BoardColumnKindEnum.PENDING;
 
 public class MainMenu {
 
-    private final Scanner scanner = new Scanner(System.in).useDelimiter("\n");
+    private final Scanner scanner;
+
+    public MainMenu() {
+        this(new Scanner(System.in).useDelimiter("\n"));
+    }
+
+    public MainMenu(final Scanner scanner) {
+        this.scanner = scanner;
+    }
 
     public void execute() throws SQLException {
         System.out.println("Bem vindo ao gerenciador de boards, escolha a opção desejada");
         var option = -1;
-        while (true){
+        while (option != 4){
             System.out.println("1 - Criar um novo board");
             System.out.println("2 - Selecionar um board existente");
             System.out.println("3 - Excluir um board");
@@ -34,7 +42,7 @@ public class MainMenu {
                 case 1 -> createBoard();
                 case 2 -> selectBoard();
                 case 3 -> deleteBoard();
-                case 4 -> System.exit(0);
+                case 4 -> System.out.println("Até logo");
                 default -> System.out.println("Opção inválida, informe uma opção do menu");
             }
         }
@@ -87,7 +95,7 @@ public class MainMenu {
             var queryService = new BoardQueryService(connection);
             var optional = queryService.findById(id);
             optional.ifPresentOrElse(
-                    b -> new BoardMenu(b).execute(),
+                    b -> new BoardMenu(scanner, b).execute(),
                     () -> System.out.printf("Não foi encontrado um board com id %s\n", id)
             );
         }

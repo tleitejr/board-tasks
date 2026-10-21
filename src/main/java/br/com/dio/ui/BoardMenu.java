@@ -6,55 +6,63 @@ import br.com.dio.persistence.entity.BoardEntity;
 import br.com.dio.persistence.entity.CardEntity;
 import br.com.dio.service.BoardColumnQueryService;
 import br.com.dio.service.BoardQueryService;
+import br.com.dio.service.BoardReportService;
 import br.com.dio.service.CardQueryService;
 import br.com.dio.service.CardService;
-import lombok.AllArgsConstructor;
-
 import java.sql.SQLException;
 import java.util.Scanner;
 
 import static br.com.dio.persistence.config.ConnectionConfig.getConnection;
 
-@AllArgsConstructor
 public class BoardMenu {
 
-    private final Scanner scanner = new Scanner(System.in).useDelimiter("\n");
+    private final Scanner scanner;
 
     private final BoardEntity entity;
+
+    public BoardMenu(final BoardEntity entity) {
+        this(new Scanner(System.in).useDelimiter("\n"), entity);
+    }
+
+    public BoardMenu(final Scanner scanner, final BoardEntity entity) {
+        this.scanner = scanner;
+        this.entity = entity;
+    }
 
     public void execute() {
         try {
             System.out.printf("Bem vindo ao board %s, selecione a operação desejada\n", entity.getId());
             var option = -1;
-            while (option != 9) {
+            while (option != 11) {
                 System.out.println("1 - Criar um card");
                 System.out.println("2 - Mover um card");
-                System.out.println("3 - Bloquear um card");
-                System.out.println("4 - Desbloquear um card");
-                System.out.println("5 - Cancelar um card");
+                System.out.println("3 - Cancelar um card");
+                System.out.println("4 - Bloquear um card");
+                System.out.println("5 - Desbloquear um card");
                 System.out.println("6 - Ver board");
                 System.out.println("7 - Ver coluna com cards");
                 System.out.println("8 - Ver card");
-                System.out.println("9 - Voltar para o menu anterior um card");
-                System.out.println("10 - Sair");
+                System.out.println("9 - Relatório de tempo por coluna");
+                System.out.println("10 - Relatório de bloqueios");
+                System.out.println("11 - Fechar board");
                 option = scanner.nextInt();
                 switch (option) {
                     case 1 -> createCard();
                     case 2 -> moveCardToNextColumn();
-                    case 3 -> blockCard();
-                    case 4 -> unblockCard();
-                    case 5 -> cancelCard();
+                    case 3 -> cancelCard();
+                    case 4 -> blockCard();
+                    case 5 -> unblockCard();
                     case 6 -> showBoard();
                     case 7 -> showColumn();
                     case 8 -> showCard();
-                    case 9 -> System.out.println("Voltando para o menu anterior");
-                    case 10 -> System.exit(0);
+                    case 9 -> showProgressReport();
+                    case 10 -> showBlockReport();
+                    case 11 -> System.out.println("Fechando board");
                     default -> System.out.println("Opção inválida, informe uma opção do menu");
                 }
             }
         }catch (SQLException ex){
-            ex.printStackTrace();
-            System.exit(0);
+            System.out.printf("Falha ao acessar o banco de dados: %s%n", ex.getMessage());
         }
     }
 
@@ -163,6 +171,7 @@ public class BoardMenu {
                             c -> {
                                 System.out.printf("Card %s - %s.\n", c.id(), c.title());
                                 System.out.printf("Descrição: %s\n", c.description());
+                                System.out.printf("Criado em: %s\n", c.createdAt());
                                 System.out.println(c.blocked() ?
                                         "Está bloqueado. Motivo: " + c.blockReason() :
                                         "Não está bloqueado");
@@ -170,6 +179,37 @@ public class BoardMenu {
                                 System.out.printf("Está no momento na coluna %s - %s\n", c.columnId(), c.columnName());
                             },
                             () -> System.out.printf("Não existe um card com o id %s\n", selectedCardId));
+        }
+    }
+
+    private void showProgressReport() throws SQLException {
+        try (var connection = getConnection()) {
+            var reports = new BoardReportService(connection).cardProgress(entity.getId());
+            if (reports.isEmpty()) {
+                System.out.println("Este board ainda não possui cards");
+            }
+            reports.forEach(report -> {
+                var completion = report.totalCompletionSeconds() == null
+                        ? "não concluído"
+                        : report.totalCompletionSeconds() + " segundos";
+                System.out.printf("Card %s - %s | criado em %s | conclusão: %s%n",
+                        report.cardId(), report.cardTitle(), report.createdAt(), completion);
+                report.columnTimes().forEach(column -> System.out.printf("  %s: %s segundos%n",
+                        column.columnName(), column.durationSeconds()));
+            });
+        }
+    }
+
+    private void showBlockReport() throws SQLException {
+        try (var connection = getConnection()) {
+            var reports = new BoardReportService(connection).cardBlocks(entity.getId());
+            if (reports.isEmpty()) {
+                System.out.println("Este board não possui histórico de bloqueios");
+            }
+            reports.forEach(report -> System.out.printf(
+                    "Card %s - %s | bloqueado em %s | duração: %s segundos | motivo: %s | desbloqueado em: %s | motivo: %s%n",
+                    report.cardId(), report.cardTitle(), report.blockedAt(), report.durationSeconds(),
+                    report.blockReason(), report.unblockedAt(), report.unblockReason()));
         }
     }
 
